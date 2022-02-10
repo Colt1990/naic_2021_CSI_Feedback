@@ -316,188 +316,7 @@ class TinyRefineBlock(nn.Module):
 
         return self.relu(residual + identity)
 
-# class Encoder(nn.Module):
-#     B = 4
 
-#     def __init__(self, feedback_bits):
-#         super(Encoder, self).__init__()
-        
-#         total_size, in_channel, w, h = 32256, 2, 126, 128
-#         self.encoder1 = nn.Sequential(OrderedDict([
-#             ("conv3x3_bn", ConvBN(in_channel, 256, 3)),
-#             ("relu1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv1x9_bn", ConvBN(256, 256, [1, 9])),
-#             ("relu2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv9x1_bn", ConvBN(256, 256, [9, 1])),
-#         ]))
-#         self.encoder2 = ConvBN(in_channel, 128,1)
-# #         self.encoder2 = nn.Sequential(OrderedDict([
-# #             ("conv3x3_bn1", ConvBN(in_channel, 32, 3)),
-# #             ("relu1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-# #             ("conv3x3_bn2", ConvBN(32, 64, 3)),
-# #             ("relu2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-# #             ("conv3x3_bn3", ConvBN(64, 32, 3)),
-# #             ("relu3", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-# #             ("conv3x3_bn4", ConvBN(32, 16, 3)),
-# #             ("relu3", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-# #         ]))
-        
-#         self.encoder_conv = nn.Sequential(OrderedDict([
-#             ("relu1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv1x1_bn", ConvBN(512, 2, 1)),
-#            ("relu2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#         ]))
-#         self.conv3 = ConvBN(128,2,3)
-#         self.sa = SpatialGate()
-#         self.se = SELayer(16)
-#         self.encoder_fc = nn.Linear(total_size, int(feedback_bits // self.B))
-#         self.sig = nn.Sigmoid()
-#         self.quantize = QuantizationLayer(self.B)
-
-#     def forward(self, x):
-#         n, c, h, w = x.detach().size()
-# #         encode1 = self.encoder1(x)
-# #         encode1 = self.sa(encode1)
-#         encode2 = self.encoder2(x)
-#         #import pdb;pdb.set_trace()
-#         encode2 = self.sa(encode2)
-#         #out = torch.cat((encode1, encode2), dim=1)
-#         #out = self.encoder_conv(out)
-#         out = encode2
-#         out = self.conv3(out)
-        
-#         #
-#         out = out.view(n, -1)
-#         #out = out.unsqueeze(2) #[1,2048,1]
-#         out = self.encoder_fc(out) # [1,2048/cr,1]
-#         out = self.sig(out)
-#         out = self.quantize(out)
-
-#         return out
-
-
-# class Decoder(nn.Module):
-#     B = 4
-
-#     def __init__(self, feedback_bits,num_refinenet=6):
-#         super(Decoder, self).__init__()
-#         self.feedback_bits = feedback_bits
-#         self.dequantize = DequantizationLayer(self.B)
-
-#         self.sig = nn.Sigmoid()
-
-#         total_size, in_channel, w, h = 32256, 2, 126, 128
-#         self.replace_dfc = nn.ConvTranspose1d(int(feedback_bits // self.B),total_size,1)
-#         decoder = OrderedDict([
-#             ("conv5x5_bn", ConvBN(2, 2, 5)),
-#             ("relu", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("CRBlock1", CRBlock()),
-#             ("CRBlock2", CRBlock()),
-# #             ("conv3x3", conv3x3(2, 2)),
-#         ])
-        
-#         self.decoder_feature = nn.Sequential(decoder)
-#         self.sigmoid = nn.Sigmoid()
-#         self.hsig= hsigmoid()
-#         self.decoder_fc = nn.Linear(int(feedback_bits // self.B), total_size)
-
-#         for m in self.modules():
-#             if isinstance(m, (nn.Conv2d, nn.Linear)):
-#                 nn.init.xavier_uniform_(m.weight)
-#             elif isinstance(m, nn.BatchNorm2d):
-#                 nn.init.constant_(m.weight, 1)
-#                 nn.init.constant_(m.bias, 0)
-
-#     def forward(self, x):
-#         c,h,w = 2,126,128
-        
-#         out = self.dequantize(x) 
-#         out = out.view(-1, int(self.feedback_bits / self.B))
-#         #print(out.shape)
-#         result = self.decoder_fc(out)
-#         result = result.view(-1,2, 126, 128)
-        
-#         allout = []
-#         for i in range(8):
-            
-#             result1 = self.decoder(result[i*8:(i+1)*8])
-#             out = self.final_layer(result1)
-#             out = self.hsig(out)
-#             allout.append(out)
-#         out = torch.cat(allout,0)
-#         return out
-
-
-# class Encoder(nn.Module):
-#     B = 4
-
-#     def __init__(self, feedback_bits, quantization=True):
-#         super(Encoder, self).__init__()
-#         self.encoder1 = nn.Sequential(OrderedDict([
-#             ("conv3x3_bn", ConvBN(2, 128, 3)),
-#             ("relu1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv1x9_bn", ConvBN(128, 128, [1, 9])),
-#             ("relu2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv9x1_bn", ConvBN(128, 128, [9, 1])),
-#         ]))
-#         self.encoder2 = ConvBN(2, 128, 3)
-#         self.encoder_conv = nn.Sequential(OrderedDict([
-#             ("relu1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv1x1_bn", ConvBN(128*2, 2, 1)),
-#             ("relu2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#         ]))
-
-#         self.fc = nn.Linear(32256, int(feedback_bits / self.B))
-#         self.sig = nn.Sigmoid()
-#         self.quantize = QuantizationLayer(self.B)
-#         self.quantization = quantization 
-
-#     def forward(self, x):
-#         encode1 = self.encoder1(x)
-#         encode2 = self.encoder2(x)
-#         out = torch.cat((encode1, encode2), dim=1)
-#         out = self.encoder_conv(out)
-#         out = out.view(-1, 32256)
-#         out = self.fc(out)
-#         out = self.sig(out)
-#         if self.quantization:
-#             out = self.quantize(out)
-#         else:
-#             out = out
-#         return out
-
-
-# class Decoder(nn.Module):
-#     B = 4
-
-#     def __init__(self, feedback_bits, quantization=True):
-#         super(Decoder, self).__init__()
-#         self.feedback_bits = feedback_bits
-#         self.dequantize = DequantizationLayer(self.B)
-#         self.fc = nn.Linear(int(feedback_bits / self.B), 32256)
-#         decoder = OrderedDict([
-#             ("conv5x5_bn", ConvBN(2, 128, 5)),
-#             ("relu", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("CRBlock1", CRBlock()),
-#             ("CRBlock2", CRBlock()),
-#         ])
-#         self.decoder_feature = nn.Sequential(decoder)
-#         self.out_cov = conv3x3(128, 2)
-#         self.sig = nn.Sigmoid()
-#         self.quantization = quantization        
-
-#     def forward(self, x):
-#         if self.quantization:
-#             out = self.dequantize(x)
-#         else:
-#             out = x
-#         out = out.view(-1, int(self.feedback_bits / self.B))
-#         out = self.fc(out)
-#         out = out.view(-1, 2, 126, 128)
-#         out = self.decoder_feature(out)
-#         out = self.out_cov(out)
-#         out = self.sig(out)
-#         return out
 ACT = nn.GELU()
 def autopad(k, p=None):  # kernel, padding
     # Pad to 'same'
@@ -682,15 +501,6 @@ class Encoder(nn.Module):
                 #Bottle2neck(in_channels,h_dim)
             )
             in_channels = h_dim
-#         for i in range(3):
-#             modules.append(Bottleneck(128,128))
-#         modules.append(
-#                 nn.Sequential(
-#                     nn.Conv2d(128, 2,
-#                               kernel_size= 3, stride= 1, padding  = 1),
-#                     nn.BatchNorm2d(2),
-#                     nn.ReLU())
-#             )
         self.encoder1 = nn.Sequential(*modules)
         
         
@@ -734,41 +544,22 @@ class Encoder(nn.Module):
                     nn.GELU())
             )
             in_channels = h_dim
-#         self.encoder3 = nn.Sequential(*modules)
-#         self.encoder3 = nn.Sequential(OrderedDict([
-#             ("conv3x3_bn", ConvBN(2, 2, 3)),
-#             ("relu1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv1x9_bn", ConvBN(2, 2, [1, 9])),
-#             ("relu2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("conv9x1_bn", ConvBN(2, 2, [9, 1])),
-#         ]))
-#         self.encoder3 =ConvBN(in_channels, 2,1)
-#         self.encoder3 = nn.Sequential(OrderedDict([
-#             ("conv5x5_bn", ConvBN(2, 2, 5)),
-#             ("relu", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-#             ("CRBlock1", CRBlock()),
-#             ("CRBlock2", CRBlock()),
-# #              ("CRBlock3", CRBlock()),
-#         ]))
-#         self.encoder3 =ConvBN(2, 2,1)
+
         self.encoder_conv = nn.Sequential(
             nn.Conv2d(4, 2,
                               kernel_size= 3, stride= 1, padding  = 1),
-#             nn.BatchNorm2d(2),
-#             nn.InstanceNorm2d(2),
+
         )
         
         self.fc_mu = nn.Linear(15360, int(feedback_bits / self.B))  #32256  #
-#         self.fc_mu2 = nn.Linear(2048, int(feedback_bits / self.B)) 
+
         #self.norm = nn.BatchNorm1d(2048)
         self.sa = SpatialGate()
         self.relu = nn.ReLU()
         self.sig = nn.Sigmoid()
         self.hsig= hsigmoid()
         self.drop = nn.Dropout(0.1)
-#         origin_codebook = (torch.arange(2**2).float()+0.5)/2**2
-#         origin_codebook = origin_codebook.view(1,1,1,-1).repeat(1,256,1,1)
-#         self.codebook = nn.Parameter(origin_codebook)
+
         
         self.quantize = QuantizationLayer(self.B)
         self.quantization = quantization 
@@ -925,50 +716,6 @@ class Decoder(nn.Module):
         out = torch.cat((out,elsePart2),2)
 
         return out
-
-
-def positional_encoding(X, num_features, dropout_p=0.1, max_len=512):
-    r'''
-        给输入加入位置编码
-    参数：
-        - num_features: 所取得特征向量得维度
-        - dropout_p: dropout的概率，当其为非零时执行dropout
-        - max_len: ，默认512
-    形状：
-        - 输入： [batch_size, seq_length, num_features]
-        - 输出： [batch_size, seq_length, num_features]
-    例子：
-        >>> X = torch.randn((2,4,10))
-        >>> X = positional_encoding(X, 10)
-        >>> print(X.shape)
-        >>> torch.Size([2, 4, 10])
-    '''
-    """
-    dropout = nn.Dropout(dropout_p)
-    P = torch.zeros((1, max_len, num_features))
-    X_ = torch.arange(max_len, dtype=torch.float32).reshape(-1, 1) / torch.pow(
-        10000,
-        torch.arange(0, num_features, 2, dtype=torch.float32) / num_features)
-    P[:, :, 0::2] = torch.sin(X_)
-    P[:, :, 1::2] = torch.cos(X_)
-    X = X + P[:, :X.shape[1], :].to(X.device)
-    """
-    num_features_ = num_features
-    max_len_ = max_len
-    dropout = nn.Dropout(dropout_p)
-    P = torch.zeros((1, max_len, num_features))
-    X_ = torch.arange(max_len, dtype=torch.float32).reshape(-1, 1) / torch.pow(
-        10000,
-        torch.arange(0, num_features, 2, dtype=torch.float32) / num_features)
-    P[:, :, 0::2] = torch.sin(X_)
-    P[:, :, 1::2] = torch.cos(X_)
-    X = X + P[:, :X.shape[1], :].to(X.device)
-    return X    
-    
-  
-
-
-
 
 
 # Note: Do not modify following class and keep it in your submission.
